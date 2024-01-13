@@ -66,6 +66,17 @@ fn too_relaxed() {
     use std::sync::atomic::AtomicUsize;
     let x: &'static _ = Box::leak(Box::new(AtomicUsize::new(0)));
     let y: &'static _ = Box::leak(Box::new(AtomicUsize::new(0)));
-    spawn(move || {});
-    spawn(move || {});
+    let t1 = spawn(move || {
+        let r1 = y.load(Ordering::Relaxed);
+        x.store(r1, Ordering::Relaxed);
+        r1
+    });
+    let t2 = spawn(move || {
+        let r2 = x.load(Ordering::Relaxed);
+        y.store(42, Ordering::Relaxed);
+        r2
+    });
+    // With MO Relaxed, possible where r1 == r2 == 42
+    let r1 = t1.join().unwrap();
+    let r2 = t2.join().unwrap();
 }
