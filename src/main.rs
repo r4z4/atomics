@@ -22,7 +22,9 @@ impl<T> Mutex<T> {
         .locked.compare_exchange_weak(
             UNLOCKED, 
             LOCKED, 
-            Ordering::Relaxed, 
+            // Establish happens-before relationship
+            Ordering::Acquire, 
+            // Keep Failure MO relaxed. If fail to take lock DO NOT want to attempt to do coordination.
             Ordering::Relaxed)
         .is_err()
         {
@@ -33,7 +35,8 @@ impl<T> Mutex<T> {
             std::thread::yield_now();
         }
         let ret = f(unsafe { &mut *self.v.get() });
-        self.locked.store(UNLOCKED, Ordering::Relaxed);
+        // Establish happens-before relationship
+        self.locked.store(UNLOCKED, Ordering::Release);
 
         ret
     }
